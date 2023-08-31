@@ -1,0 +1,58 @@
+name: "STAGING ENV: Deploy Lambda"
+
+on:
+  push:
+    branches:
+      - staging
+
+jobs:
+  deploy-terraform-staging:
+    name: "Plan & Deploy Infra in Stage environment"
+    runs-on: ubuntu-latest
+    env:
+      aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      aws-region: us-west-1
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.10
+
+      - name: Use Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: 10.x
+
+      - name: Install CDK
+        run: npm install -g aws-cdk
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: { % raw % }${{ secrets.AWS_ACCESS_KEY_ID }}{% endraw %}
+          aws-secret-access-key: { % raw % }${{ secrets.AWS_SECRET_ACCESS_KEY }}{% endraw %}
+          aws-region: { % raw % }${{ secrets.AWS_REGION }}{% endraw %}
+
+      - name: Setup CDK
+        run: |
+              python3 -m venv .venv;
+              source .venv/bin/activate;
+              pip install -r requirements.txt
+
+      - name: CDK Bootstrap
+        id: init
+        run: cdk bootstrap
+
+      - name: CDK Check Difference
+        id: diff
+        run: cdk diff
+
+      - name: CDK Deploy
+        id: deploy
+        run: cdk deploy
